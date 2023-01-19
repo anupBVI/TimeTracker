@@ -1,15 +1,8 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import styled from "styled-components";
 import { Content, ContentBody } from "../components/Home/homepage.styles";
-// import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
-import { getStaticContextFromError } from "@remix-run/router";
-// import "leaflet/dist/leaflet.css";
 
-import { Map, InfoWindow, Marker, GoogleApiWrapper } from "google-maps-react";
-
-// AIzaSyBJmi5ykWh8Hv1RYH-hwadxGICmPGKBK5E
-
-// const FormWrapper = styled.div``;
+import Map from "./map";
 
 const FormWrapper = styled.div`
   width: 100vw;
@@ -68,7 +61,7 @@ const FormInput: any = styled.input`
 const ErrorMessage: any = styled.span`
   font-size: 14px;
   color: #e54040;
-  
+
   /* display: none; */
 `;
 const SubmitButton = styled.button`
@@ -95,24 +88,16 @@ const FormSelect = styled.select`
 // const FormWrapper = styled.div``;
 
 const SignUp = () => {
-  // const [error, setError] = useState(false);
-  // const [errorPhone, setErrorPhone] = useState(false);
-  // const [errorEmail, setErrorEmail] = useState(false);
-  // const [errorPassword, setErrorPassword] = useState(false);
-  // const [errorCPassword, setErrorCPassword] = useState(false);
+  const [center, setCenter] = useState({ lat: -34.397, lng: 150.644 });
+  const [marker, setMarker] = useState({ lat: -34.397, lng: 150.644 });
 
-  const googleKey = "AIzaSyBJmi5ykWh8Hv1RYH-hwadxGICmPGKBK5E";
-  // const Map = withScriptjs(
-  //   withGoogleMap((props: any) => {
-  //     return (
-  //       <GoogleMap
-  //         defaultZoom={8}
-  //         defaultCenter={{ lat: -34.397, lng: 150.644 }}
-  //       />
-  //     );
-  //   })
-  // );
+  const formatName = /^[a-zA-Z]{2,}$/; // regular expression to match only letters
+  const phoneFormat = /^[0-9]{10}$/;
+  const emailFormat = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  const passwordFormat =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#\$%\^&\*])(?=.{6,})/; // 1num 1upr 1lwr and 1 splchar
 
+  const [submitFlag, setsubmitFlag] = useState(false);
   const [formData, setFormData] = useState({
     Name: "",
     email: "",
@@ -135,6 +120,16 @@ const SignUp = () => {
     country: "",
     state: "",
     pincode: "",
+
+    errors: {
+      Name: "",
+      email: "",
+      phone: "",
+      password: "",
+      cpName: "",
+      cpPhone: "",
+      country: "",
+    },
   });
 
   const {
@@ -162,46 +157,28 @@ const SignUp = () => {
     pincode,
   } = formData;
 
+  const [allData, setAllData] = useState<any>([]);
   const [formError, setFormError] = useState<any>({});
   const [formErrors, setFormErrors] = useState<any>({});
 
+  const [isValidFlag, setIsValidFlag] = useState(false);
+
   const validateForm = () => {
     let err: any = {};
-    if (Name === "") {
-      err.Name = "Name should not be empty";
-    } else {
-      let regex = /^[a-zA-Z]{2,}$/;
-      if (!regex.test(Name)) {
-        err.Name = "Name only contains alphabets";
-      }
-    }
 
+    if (Name === "") {
+      err.Name = "Name should not be empty -V";
+    }
     if (email === "") {
       err.email = "Email should not be empty";
-    } else {
-      let regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-      if (!regex.test(email)) {
-        err.email = "Invalid Email";
-      }
     }
 
     if (phone === "") {
-      err.phone = "Phone no. should not be empty";
-    } else {
-      let regex = /^[0-9]{10}$/;
-      if (!regex.test(phone)) {
-        err.phone = "Invalid phone number";
-      }
+      err.phone = "Phone no. should not be empty -v";
     }
 
     if (password === "") {
-      err.password = "Password or Confirm should not be empty";
-    } else {
-      let regex =
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#\$%\^&\*])(?=.{6,})/;
-      if (!regex.test(password)) {
-        err.password = "Invalid Password format";
-      }
+      err.password = "Password or Confirm should not be empty -v";
     }
 
     if (cpName === "") {
@@ -209,11 +186,6 @@ const SignUp = () => {
     }
     if (cpPhone === "") {
       err.cpPhone = "Contact person Phone should not be empty";
-    } else {
-      let regex = /^[0-9]{10}$/;
-      if (!regex.test(cpPhone)) {
-        err.cpPhone = "Invalid phone number";
-      }
     }
 
     if (cCode === "") {
@@ -228,7 +200,6 @@ const SignUp = () => {
     if (sepa === "") {
       err.sepa = "Please select SEPA number";
     }
-
     if (cmpHqAdd === "") {
       err.cmpHqAdd = "Address should not be empty";
     }
@@ -243,28 +214,26 @@ const SignUp = () => {
     }
 
     setFormError({ ...err });
+
     return Object.keys(err).length < 1;
   };
-  const formatName = /^[a-zA-Z]{2,}$/; // regular expression to match only letters
-  const phoneFormat = /^[0-9]{10}$/;
-  const emailFormat = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-  const passwordFormat =
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#\$%\^&\*])(?=.{6,})/; // 1num 1upr 1lwr and 1 splchar
 
   const handleChange = (e: any) => {
     let { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
-
     let newErrors = { ...formErrors };
 
     switch (name) {
       case "Name":
+        // if(value.length===0){
+        //   setFormError({...formError,Name:""})
+        // }
         newErrors.Name =
           value.trim().length === 0
-            ? "Name is required change"
+            ? ""
             : !formatName.test(value)
-            ? "Name only contains alphabets change"
-            : "";
+            ? "Name must be at least 2 characters long"
+            : (formError.Name = "");
         break;
       case "email":
         newErrors.email =
@@ -272,15 +241,15 @@ const SignUp = () => {
             ? "Email is required"
             : !emailFormat.test(value)
             ? "Invalid Email"
-            : "";
+            : (formError.email = "");
         break;
       case "phone":
         newErrors.phone =
           value.trim().length === 0
-            ? "Phone no is required"
+            ? "phone is required change"
             : !phoneFormat.test(value)
-            ? "Phone no only contains numbers"
-            : "";
+            ? "Please enter a valid phone number"
+            : (formError.phone = "");
         break;
       case "password":
         newErrors.password =
@@ -288,27 +257,17 @@ const SignUp = () => {
             ? "Password is required"
             : !passwordFormat.test(value)
             ? "Invalid Password format"
-            : "";
+            : (formError.password = "");
         break;
 
-      // case 'cPassword':
-      //   newErrors.cPassword = value.trim().length === 0 ? 'Confirm Password is required' : (cPassword===password ? 'Password does not match' : 'Okay');
-      //   break;
-      case "phone":
-        newErrors.phone =
-          value.trim().length === 0
-            ? "Name is required"
-            : !formatName.test(value)
-            ? "Name only contains alphabets"
-            : "";
-        break;
       case "cpName":
         newErrors.cpName =
           value.trim().length === 0
             ? "Name is required"
             : !formatName.test(value)
             ? "Name only contains alphabets"
-            : "";
+            : (formError.cpName = "");
+
         break;
       case "cpPhone":
         newErrors.cpPhone =
@@ -316,70 +275,42 @@ const SignUp = () => {
             ? "Name is required"
             : !phoneFormat.test(value)
             ? "Phone no only contains numbers"
-            : "";
+            : (formError.cpPhone = "");
         break;
     }
 
     setFormErrors({ ...newErrors });
-
-    // return Object.keys(newErrors).length < 1;
-
-    // if (name === "Name") {
-    //   if (formatName.test(value)) {
-    //     setFormValues({ ...formValues, [name]: value });
-    //     setError(false);
-    //   } else {
-    //     setError(true);
-    //   }
-    // } else if (name === "phone") {
-    //   if (phoneFormat.test(value)) {
-    //     setFormValues({ ...formValues, [name]: value });
-    //     setErrorPhone(false);
-    //   } else {
-    //     setErrorPhone(true);
-    //   }
-    // } else if (name === "email") {
-    //   if (emailFormat.test(value)) {
-    //     setFormValues({ ...formValues, [name]: value });
-    //     setErrorEmail(false);
-    //   } else {
-    //     setErrorEmail(true);
-    //   }
-    // } else if (name === "password") {
-    //   if (passwordFormat.test(value)) {
-    //     setFormValues({ ...formValues, [name]: value });
-    //     setErrorPassword(false);
-    //   } else {
-    //     setErrorPassword(true);
-    //   }
-    // } else if (name === "cPassword") {
-    //   if (cPassword !== password) {
-    //     setErrorCPassword(true);
-    //   } else {
-    //     setErrorCPassword(false);
-    //   }
-    // }
-
-    // console.log(name, " :", value);
+    let a = validateForm();
+    setIsValidFlag(a);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // console.log(formData);
-
     let isValid = validateForm();
 
     if (isValid) {
       alert("All Good");
+      setAllData(formData);
+      console.log(formData);
     } else {
+      console.log(formError);
       alert("Something went wrong");
     }
-    // console.log(isValid);
+
+    // if(validateForm()){
+    //   console.log("Validated " , formData)
+    // }
   };
-  console.log(formError);
 
   return (
     <ContentBody align="none">
+      <Map
+        // google={google}
+        center={{ lat: 18.5204, lng: 73.8567 }}
+        height="300px"
+        zoom={15}
+      />
+
       <FormWrapper>
         <FormContainer>
           <FormHeader>My Profile</FormHeader>
@@ -403,7 +334,9 @@ const SignUp = () => {
                 />
 
                 <ErrorMessage className="invalid">
-                  {formError.Name}
+                  {/* { submitFlag ? " " : formError.Name } */}
+                  {/* {!Name && nameError } */}
+                  {formError.Name && formError.Name}
                 </ErrorMessage>
                 {formErrors.Name && (
                   <span className="error">{formErrors.Name}</span>
@@ -422,7 +355,7 @@ const SignUp = () => {
                 <ErrorMessage className="invalid">
                   {/* Please enter a valid email id,{" "}
                     <span style={{ color: "gray" }}>example (jon@doe.com)</span> */}
-                  {formError.email}
+                  {submitFlag ? " " : formError.email}
                 </ErrorMessage>
                 {formErrors.email && (
                   <span className="error">{formErrors.email}</span>
@@ -440,7 +373,8 @@ const SignUp = () => {
                 />
                 <ErrorMessage className="invalid">
                   {/* Phone number only contain(0 - 9)Numbers & must be 10 digits */}
-                  {formError.phone}
+
+                  {submitFlag ? " " : formError.phone}
                 </ErrorMessage>
                 {formErrors.phone && (
                   <span className="error">{formErrors.phone}</span>
@@ -458,7 +392,7 @@ const SignUp = () => {
                 />
                 <ErrorMessage className="invalid">
                   {" "}
-                  {formError.password}
+                  {submitFlag ? " " : formError.password}
                   {/* Password must contain atleast 1 uppercase 1 lowercase
                     1special char & 1 number */}
                 </ErrorMessage>
@@ -498,7 +432,7 @@ const SignUp = () => {
                 />
                 <ErrorMessage className="invalid">
                   {/* please enter contact person name */}
-                  {formError.cpName}
+                  {submitFlag ? " " : formError.cpName}
                 </ErrorMessage>
                 {formErrors.cpName && (
                   <span className="error">{formErrors.cpName}</span>
@@ -518,7 +452,7 @@ const SignUp = () => {
                 />
                 <ErrorMessage className="invalid">
                   {" "}
-                  {formError.cpPhone}
+                  {submitFlag ? " " : formError.cpPhone}
                 </ErrorMessage>
                 {formErrors.cpPhone && (
                   <span className="error">{formErrors.cpPhone}</span>
@@ -794,14 +728,7 @@ const SignUp = () => {
 
               {/*  */}
 
-              {/* <div style={{ width: "100%", height: "100%" }}>
-                <Map
-                  googleMapURL={`https://maps.googleapis.com/maps/api/js?key=${googleKey}`}
-                  loadingElement={<div style={{ height: `100%` }} />}
-                  containerElement={<div style={{ height: `400px` }} />}
-                  mapElement={<div style={{ height: `100%` }} />}
-                />
-              </div> */}
+              <div style={{ width: "100%", height: "100%" }}></div>
 
               {/*  */}
 
@@ -857,3 +784,32 @@ const SignUp = () => {
 };
 
 export default SignUp;
+
+// const validationRules = {
+//   Name: {
+//       required: true,
+//       pattern: /^[a-zA-Z]{2,}$/,
+//       errorMessage: "Name should not be empty and only contain alphabets"
+//   },
+//   email: {
+//       required: true,
+//       pattern: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+//       errorMessage: "Invalid Email"
+//   },
+//   // add the rest of the fields and their validation rules
+// };
+
+// const handleChange = (e: any) => {
+//   let { name, value } = e.target;
+//   setFormData({ ...formData, [name]: value });
+
+//   let err: any = {};
+//   if (validationRules[name]) {
+//       if (validationRules[name].required && value === "") {
+//           err[name] = validationRules[name].errorMessage;
+//       } else if (validationRules[name].pattern && !validationRules[name].pattern.test(value)) {
+//           err[name] = validationRules[name].errorMessage;
+//       }
+//   }
+//   setFormError({ ...formError, ...err });
+// }

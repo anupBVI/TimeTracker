@@ -22,6 +22,8 @@ import Team from "./components/Home/pages/Team";
 import Logins from "./pages/Logins";
 import Protected from "./components/Protected";
 import SignUp from "./pages/SignUp";
+import Form from "./pages/test";
+import Register from "./pages/Register";
 
 const App = () => {
   return (
@@ -33,6 +35,8 @@ const App = () => {
           <Routes>
             <Route path="/" element={<Logins />} />
             <Route path="/signup" element={<SignUp />} />
+            <Route path="/testing" element={<Form />} />
+            <Route path="/register" element={<Register />} />
 
             <Route path="/tracker" element={<Protected Component={Home} />}>
               <Route path="" element={<TimeTracker />} />

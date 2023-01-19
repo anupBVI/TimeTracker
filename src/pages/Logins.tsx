@@ -162,8 +162,11 @@ const Logins = (props: any) => {
                   Login
                 </Button>
                 <p>
-                  Dont have Account? <NavLink to="/signup">Sign Up</NavLink>
+                  Dont have Account? <NavLink to="/register">Sign Up</NavLink>
                 </p>
+                {/* <p>
+                  Dont have Account testing? <NavLink to="/testing">Sign Up</NavLink>
+                </p> */}
                 </div>  
               </Form.Item>
             </Form>
